@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(adaptive_clustering)
+project(lidarfuse)
 
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs visualization_msgs geometry_msgs pcl_conversions pcl_ros)
 
@@ -13,8 +13,8 @@ generate_messages(DEPENDENCIES std_msgs sensor_msgs)
 
 catkin_package()
 
-add_executable(adaptive_clustering src/adaptive_clustering.cpp)
-target_link_libraries(adaptive_clustering ${catkin_LIBRARIES})
+add_executable(lidarfuse src/lidarfuse.cpp)
+target_link_libraries(lidarfuse ${catkin_LIBRARIES})
 if(catkin_EXPORTED_TARGETS)
-  add_dependencies(adaptive_clustering ${catkin_EXPORTED_TARGETS})
+  add_dependencies(lidarfuse ${catkin_EXPORTED_TARGETS})
 endif()

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>adaptive_clustering</name>
+  <name>lidarfuse</name>
   <version>0.0.1</version>
   <description>Light-weight real-time high-accuracy point cloud clustering.</description>
   <maintainer email="zhi.yan@utbm.fr">Zhi Yan</maintainer>
