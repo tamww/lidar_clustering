@@ -30,7 +30,9 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/common/common.h>
 #include <pcl/common/centroid.h>
-
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 //#define LOG
 #include <Eigen/Geometry>
 #include <Eigen/Core>
@@ -49,14 +51,17 @@ ros::Publisher depth_photo;
 bool print_fps_;
 float z_axis_min_;
 float z_axis_max_;
+float y_axis_min_;
+float y_axis_max_;
 int cluster_size_min_;
 int cluster_size_max_;
 
 const int region_max_ = 50; // Change this value to match how far you want to detect.
 int regions_[100];
 
-int frames; clock_t start_time; bool reset = true;//fps
-
+int frames; clock_t start_time; 
+bool reset = true;//fps
+// pcl::PointCloud<pcl::PointXYZI> DepthCloud;
 //function to calculate dot product of two vectors
 // int dot_product(int vector_a[], int vector_b[]) {
 //    int product = 0;
@@ -124,13 +129,20 @@ double* dist_to_point(Eigen::Vector2d P, Eigen::Vector2d A, Eigen::Vector2d B){
     // Vector2d a(5.0, 6.0);
     // Vector2d a(5.0, 6.0);
 
+/*void depthImgCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
+  pcl::PointCloud<pcl::PointXYZI>::Ptr D1(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::fromROSMsg(*ros_pc2_in, *D1 );
+  DepthCloud = *D1;
+}*/
+
+
 void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
   if(print_fps_)if(reset){frames=0;start_time=clock();reset=false;}//fps
   
   /*** Convert ROS message to PCL ***/
   pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_pc_in(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*ros_pc2_in, *pcl_pc_in);
-  
+
   /*** Remove ground and ceiling ***/
   pcl::IndicesPtr pc_indices(new std::vector<int>);
   pcl::PassThrough<pcl::PointXYZI> pt;
@@ -148,9 +160,11 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
 
   // pt.setFilterFieldName("y");
   // pt.setFilterLimits(-20, -300);
+  
+  // pcl::PointCloud<pcl::PointXYZI> K1 =  + ;
+  // pcl::PointCloud<pcl::PointXYZI> v1 = DepthCloud+ *pcl_pc_in;
 
-
-
+  // pcl_pc_in = v1.makeShared();
 
   
   /*** Divide the point cloud into nested circular regions ***/
@@ -254,6 +268,7 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
     markerk.points.push_back(car[8]);
     markerk.points.push_back(car[10]);
     markerk.lifetime = ros::Duration(0.1);
+    //markerk.lifetime = ros::Duration(5);
     dist_array_car.markers.push_back(markerk);
     if(dist_array_car.markers.size()) {
       dist_pub_car.publish(dist_array_car);
@@ -440,7 +455,7 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
         }
       }
       geometry_msgs::Point finalss[2];
-      if(minQ[0] >0 && minP[0]> -1 && !(minP[1] > car[1].y && minP[1] <car[0].y )){
+      //if(minQ[0] >0 && minP[0]> -1 && !(minP[1] > car[1].y && minP[1] <car[0].y )){
         finalss[0].x = minQ[0];
         finalss[0].y = minQ[1];
         finalss[0].z = minQ[2];
@@ -462,7 +477,8 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
         markerDist.color.r = 1.0;
         markerDist.color.g = ((int)mindist) %255/100;
         markerDist.color.b = 0.0;
-        markerDist.lifetime = ros::Duration(0.1);
+        //markerDist.lifetime = ros::Duration(0.1);
+        markerDist.lifetime = ros::Duration(10);
         markerDist.points.push_back(finalss[0]);
         markerDist.points.push_back(finalss[1]);
         dist_array_dist.markers.push_back(markerDist);
@@ -499,7 +515,7 @@ void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& ros_pc2_in) {
         if(mindist <= 1.5 && (y3 <0.5 && y3>-0.5)){
           flag++;
         }
-      }
+      //}
     }
 
 
@@ -567,8 +583,10 @@ int main(int argc, char **argv) {
   
   /*** Subscribers ***/
   ros::NodeHandle nh;
+  /*for detection via lidar*/
   ros::Subscriber point_cloud_sub = nh.subscribe<sensor_msgs::PointCloud2>("points_raw", 1, pointCloudCallback);
-  //ros::Subscriber depth_input = nh.subscribe<sensor_msgs::Image>("/simulator/camera_node/depth", 100, );
+  /*uncomment it to use for RGB-D detection*/
+  //ros::Subscriber point_cloud_sub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth/color/points", 1, pointCloudCallback);
   ROS_INFO_STREAM("Hello ROS");
   /*** Publishers ***/
   ros::NodeHandle private_nh("~");
@@ -578,14 +596,16 @@ int main(int argc, char **argv) {
   marker_array_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("markers", 100);
   dist_pub_car = private_nh.advertise<visualization_msgs::MarkerArray>("marker_car", 10);
   dist_pub_line = private_nh.advertise<visualization_msgs::MarkerArray>("marker_dist", 10);
-  //depth_photo = private_nh.advertise<sensor_msgs::PointCloud2>("cloud_filtered", 100);
+  // depth_photo = private_nh.advertise<sensor_msgs::PointCloud2>("/camera/depth/color/points", 100);
   /*** Parameters ***/
   std::string sensor_model;
   
   private_nh.param<std::string>("sensor_model", sensor_model, "VLP-16"); // VLP-16, HDL-32E, HDL-64E
   private_nh.param<bool>("print_fps", print_fps_, false);
-  private_nh.param<float>("z_axis_min", z_axis_min_, -1);
+  private_nh.param<float>("z_axis_min", z_axis_min_, 1);
   private_nh.param<float>("z_axis_max", z_axis_max_, 3);
+  // private_nh.param<float>("y_axis_min", y_axis_min_, 0.1);
+  // private_nh.param<float>("y_axis_max", y_axis_max_, 3);
   private_nh.param<int>("cluster_size_min", cluster_size_min_, 70);
   private_nh.param<int>("cluster_size_max", cluster_size_max_, 2200000);
   

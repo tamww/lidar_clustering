@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="lidarDeep" name="lidarDeep" type="lidarDeep">
+    <!-- <param name="print_fps" value="true"/> -->
+  </node>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(env PWD)/lidarDeep.rviz"/>
+</launch>
+
